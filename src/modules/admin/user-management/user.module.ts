@@ -201,7 +201,8 @@ routes.get('/findOne', adminAuthMiddleware, async ( req: Request, res: Response)
 });
 
 routes.get('/findAll', adminAuthMiddleware, async ( req: Request, res: Response) => {
-    const queryParams = req.query;
+    const queryParams: any = req.query;
+    //console.log(queryParams);
     entityInit(entity).then(() => {
         fs.readFile(`./data/${entity}.json`, (err, rawData) => {
             if (err) console.log(err);
@@ -214,16 +215,53 @@ routes.get('/findAll', adminAuthMiddleware, async ( req: Request, res: Response)
                 for (const obj of jsonData) {
                     let matchAll = true;
                     for (const [key, value] of Object.entries(queryParams)) {
-                        if(typeof obj[key] === 'object') {
-                            // @ts-ignore
-                            for (const [k, v] of Object.entries(value)) {
-                                if(obj[key][k] !== v) {
+                        if(key !== "metafields") {
+                            if(typeof obj[key] === 'object') {
+                                // @ts-ignore
+                                for (const [k, v] of Object.entries(value)) {
+                                    if(obj[key][k] !== v) {
+                                        matchAll = false;
+                                        break;
+                                    }
+                                }
+    
+                            } else if(obj[key] !== value) {
+                                matchAll = false;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Metafields Search
+                    if(queryParams.metafields) {
+                        if(queryParams.metafields.length > 0) {
+                            for (const queryMetafield of queryParams.metafields) {
+                                if(obj.metafields) {
+                                    if(obj.metafields.length > 0) {
+                                        const objMetafield = obj.metafields.find((a: any) => a.key === queryMetafield.key);
+                                        if(!objMetafield) {
+                                            matchAll = false;
+                                            break;
+                                        }
+
+                                        if(typeof queryMetafield.value === 'object') {
+                                            for (const [k, v] of Object.entries(queryMetafield.value)) {
+                                                if(objMetafield.value[k] !== queryMetafield.value[k]) {
+                                                    matchAll = false;
+                                                    break;
+                                                }
+                                            }
+                                        } else if(queryMetafield.value !== objMetafield.value) {
+                                            matchAll = false;
+                                            break;
+                                        }
+                                    }
+                                } else {
                                     matchAll = false;
                                     break;
                                 }
                             }
-
-                        } else if(obj[key] !== value) {
+                        } else {
                             matchAll = false;
                             break;
                         }
